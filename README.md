@@ -8,14 +8,14 @@ vLLM performance dashboard
 pip install -r requirements.txt
 ```
 
-## Run `update_data.py` periodically
+## (For Maintainers) Run `update_data.py` periodically
 
 ```shell
 export BUILDKIT_API_TOKEN=""
 python update_data.py
 ```
 
-## Serve the data
+## (For Users) Serve the data and view it locally
 
 ```shell
 python serve.py
