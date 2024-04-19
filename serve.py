@@ -1,10 +1,21 @@
+import os
 import dash
 import pandas as pd
 import plotly.express as px
 from dash import html, dcc, Input, Output, dash_table
+from datetime import datetime
+from zoneinfo import ZoneInfo  # This is for Python 3.9 and later
+
+tz = 'America/Los_Angeles'
+local_tz = ZoneInfo(tz)  # Change this to your timezone, e.g., 'Europe/London', 'Asia/Tokyo'
 
 # Load your Excel file
-df = pd.read_excel("buildkite_benchmarks.xlsx")
+file_path = "buildkite_benchmarks.xlsx"
+df = pd.read_excel(file_path)
+
+timestamp = os.path.getmtime(file_path)
+last_modified_time = datetime.fromtimestamp(timestamp).astimezone(local_tz)
+readable_time = last_modified_time.strftime('%Y-%m-%d %H:%M:%S') + ' ' + tz
 
 # Create a column with the commit link as text (since Plotly hover can't render HTML)
 df['commit_link'] = df['commit_url'].apply(lambda x: f"URL: {x}")
@@ -21,7 +32,8 @@ app.layout = html.Div([
         value='Average Latency'  # Default value
     ),
     dcc.Graph(id='time-series-chart'),
-    html.Div(id='url-click-output')  # To handle click outputs
+    html.Div(id='url-click-output'),  # To handle click outputs
+    html.Div(f"Last Updated: {readable_time}", style={'position': 'fixed', 'bottom': '10px', 'right': '10px'}),
 ])
 
 # Callback for updating the graph based on selected metric
