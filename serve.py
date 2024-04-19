@@ -39,7 +39,7 @@ def update_graph(selected_metric):
     )
     fig.update_traces(
         mode='markers+lines',
-        hovertemplate='%{text}<extra></extra>'  # Customize hover text
+        hovertemplate='%{y}<extra></extra>'  # Customize hover text
     )
     return fig
 
@@ -53,7 +53,7 @@ def on_point_click(clickData):
     if clickData:
         url = clickData['points'][0]['text'].split("URL: ")[1]
         # Display the URL; in a real app, you might try to open this URL with JavaScript
-        return f"Click to open: {url}"
+        return html.A(f"Open Commit {url}", href=url, target="_blank")
     return "Click on a point to see the URL."
 
 if __name__ == '__main__':
