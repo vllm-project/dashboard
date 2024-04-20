@@ -3,7 +3,7 @@ import dash
 import pandas as pd
 import plotly.express as px
 from plotly.subplots import make_subplots
-from dash import html, dcc, Input, Output, dash_table
+from dash import html, dcc, Input, Output, dash_table, clientside_callback
 from datetime import datetime
 from zoneinfo import ZoneInfo  # This is for Python 3.9 and later
 
@@ -27,7 +27,7 @@ app = dash.Dash(__name__)
 # Dropdown to select the metric for plotting
 app.layout = html.Div([
     html.H1('Performance Metrics Over Time'),
-    html.Div(id='url-click-output'),  # To handle click outputs
+    dcc.Markdown("", id='url-click-output'),  # Use dcc.Markdown to handle HTML
     dcc.Dropdown(
         id='metric-select',
         options=[{'label': col, 'value': col} for col in df.columns if df[col].dtype in ['float64', 'int64']],
@@ -75,18 +75,19 @@ def update_graph(selected_metrics):
     )
     return fig
 
-# Optional: Callback to handle clicks and potentially open URLs
-@app.callback(
+clientside_callback(
+    """
+    function(clickData) {
+        if (clickData) {
+            var url = clickData.points[0].text.split("URL: ")[1];
+            return `[Open Commit ${url}](${url})`;
+        }
+        return "Click on a point to see the URL.";
+    }
+    """,
     Output('url-click-output', 'children'),
-    [Input('time-series-chart', 'clickData')],
-    prevent_initial_call=True
+    Input('time-series-chart', 'clickData'),
 )
-def on_point_click(clickData):
-    if clickData:
-        url = clickData['points'][0]['text'].split("URL: ")[1]
-        # Display the URL; in a real app, you might try to open this URL with JavaScript
-        return html.A(f"Open Commit {url}", href=url, target="_blank")
-    return "Click on a point to see the URL."
 
 if __name__ == '__main__':
     app.run_server(debug=True)
