@@ -59,7 +59,7 @@ app.layout = html.Div([
         multi=True
     ),
     # Generate a plot for each metric, hidden by default
-    html.Div([dcc.Graph(id=f'graph-{metric}', figure=create_metric_figure(metric), style={'display': 'none'})
+    html.Div([dcc.Graph(id=f'graph-{metric}', figure=create_metric_figure(metric))
               for metric in metrics]),
     dcc.Store(id='plot-visibility'),
     html.Div(f"Last Updated: {readable_time}", style={'position': 'fixed', 'bottom': '10px', 'right': '10px'}),
