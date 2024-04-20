@@ -6,6 +6,7 @@ from plotly.subplots import make_subplots
 from dash import html, dcc, Input, Output, dash_table, clientside_callback
 from datetime import datetime
 from zoneinfo import ZoneInfo  # This is for Python 3.9 and later
+from flask import request
 
 tz = 'America/Los_Angeles'
 local_tz = ZoneInfo(tz)  # Change this to your timezone, e.g., 'Europe/London', 'Asia/Tokyo'
@@ -98,6 +99,17 @@ for metric in metrics:
         Input(f'graph-{metric}', 'clickData'),
         prevent_initial_call=True,
     )
+
+# Flask request logging
+@app.server.before_request
+def log_request():
+    # This will print the request details before each request is processed.
+    if request.path != '/_reload-hash':
+        print(f"Request received at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"Request path: {request.path}")
+        print(f"Request method: {request.method}")
+        print(f"Request headers: {request.headers}")
+        print(f"Request body: {request.get_data(as_text=True)}")
 
 if __name__ == '__main__':
     app.run_server(debug=True)
