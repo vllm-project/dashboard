@@ -13,6 +13,7 @@ local_tz = ZoneInfo(tz)  # Change this to your timezone, e.g., 'Europe/London', 
 # Load your Excel file
 file_path = "buildkite_benchmarks.xlsx"
 df = pd.read_excel(file_path)
+metrics = [col for col in df.columns if df[col].dtype in ['float64', 'int64']]
 
 timestamp = os.path.getmtime(file_path)
 last_modified_time = datetime.fromtimestamp(timestamp).astimezone(local_tz)
@@ -24,70 +25,79 @@ df['commit_link'] = df['commit_url'].apply(lambda x: f"URL: {x}")
 # Create a Dash application
 app = dash.Dash(__name__)
 
+def create_metric_figure(metric):
+    # Create a subplot figure for each metric, as there is only one metric per plot here
+    fig = make_subplots(rows=1, cols=1, shared_xaxes=True)
+    trace = px.line(
+        df,
+        x='build_datetime',
+        y=metric,
+        title=f'Trend of {metric}',
+        text='commit_link'  # This is where the hover text comes from
+    ).data[0]
+    fig.add_trace(trace, row=1, col=1)
+    
+    fig.update_traces(
+        mode='markers+lines',
+        hovertemplate='%{y}<extra></extra>'  # Customize hover text
+    )
+    fig.update_layout(
+        height=300,  # Fixed height as each metric is in a separate plot now
+        title_text=f"Performance Metrics for {metric}",
+        hovermode='closest'
+    )
+    return fig
+
 # Dropdown to select the metric for plotting
 app.layout = html.Div([
     html.H1('Performance Metrics Over Time'),
     dcc.Markdown("", id='url-click-output'),  # Use dcc.Markdown to handle HTML
     dcc.Dropdown(
         id='metric-select',
-        options=[{'label': col, 'value': col} for col in df.columns if df[col].dtype in ['float64', 'int64']],
-        value=[col for col in df.columns if df[col].dtype in ['float64', 'int64']],  # Default to all numeric columns
-        multi=True  # Allow multiple selections
+        options=[{'label': metric, 'value': metric} for metric in metrics],
+        value=metrics,
+        multi=True
     ),
-    dcc.Graph(id='time-series-chart'),
+    # Generate a plot for each metric, hidden by default
+    html.Div([dcc.Graph(id=f'graph-{metric}', figure=create_metric_figure(metric), style={'display': 'none'})
+              for metric in metrics]),
+    dcc.Store(id='plot-visibility'),
     html.Div(f"Last Updated: {readable_time}", style={'position': 'fixed', 'bottom': '10px', 'right': '10px'}),
 ])
 
-# Callback for updating the graph based on selected metrics
-@app.callback(
-    Output('time-series-chart', 'figure'),
-    Input('metric-select', 'value')
-)
-def update_graph(selected_metrics):
-    if not selected_metrics:
-        return {}
-    # Create a subplot figure with one row per selected metric
-    fig = make_subplots(rows=len(selected_metrics), cols=1, shared_xaxes=True, vertical_spacing=0.02)
-    
-    for i, metric in enumerate(selected_metrics):
-        trace = px.line(
-            df,
-            x='build_datetime',
-            y=metric,
-            title=f'Trend of {metric}',
-            text='commit_link'  # This is where the hover text comes from
-        ).data[0]
-        fig.add_trace(
-            trace,
-            row=i+1,
-            col=1
-        )
-    
-    fig.update_traces(
-        mode='markers+lines',
-        hovertemplate='%{y}<extra></extra>'  # Customize hover text
-    )
-    
-    fig.update_layout(
-        height=300 * len(selected_metrics),  # Adjust height based on the number of metrics
-        title_text="Performance Metrics Over Time",
-        hovermode='closest'
-    )
-    return fig
-
 clientside_callback(
     """
-    function(clickData) {
-        if (clickData) {
-            var url = clickData.points[0].text.split("URL: ")[1];
-            return `[Open Commit ${url}](${url})`;
+    function(selectedMetrics, ...plotIds) {
+            // Loop through all plot IDs and set visibility
+            plotIds.forEach((plotId) => {
+                const plotElement = document.getElementById(plotId);
+                if (plotElement) {
+                    plotElement.style.display = selectedMetrics.includes(plotId.replace('graph-', '')) ? 'block' : 'none';
+                }
+            });
+            return null;
         }
-        return "Click on a point to see the URL.";
-    }
     """,
-    Output('url-click-output', 'children'),
-    Input('time-series-chart', 'clickData'),
+    Output('plot-visibility', 'data'),
+    Input('metric-select', 'value'),
+    state=[Input(f'graph-{metric}', 'id') for metric in metrics]  # Passing plot IDs as state
 )
+
+for metric in metrics:
+    clientside_callback(
+        """
+        function(clickData) {
+            if (clickData) {
+                var url = clickData.points[0].text.split("URL: ")[1];
+                return `[Open Commit ${url}](${url})`;
+            }
+            return "Click on a point to see the URL.";
+        }
+        """,
+        Output('url-click-output', 'children', allow_duplicate=True),
+        Input(f'graph-{metric}', 'clickData'),
+        prevent_initial_call=True,
+    )
 
 if __name__ == '__main__':
     app.run_server(debug=True)
