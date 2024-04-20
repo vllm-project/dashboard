@@ -39,7 +39,7 @@ def create_metric_figure(metric):
     
     fig.update_traces(
         mode='markers+lines',
-        hovertemplate='%{y}<extra></extra>'  # Customize hover text
+        hovertemplate='Time:%{x}<br>Value: %{y}</br><extra></extra>'  # Customize hover text
     )
     fig.update_layout(
         height=300,  # Fixed height as each metric is in a separate plot now
