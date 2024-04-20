@@ -2,6 +2,7 @@ import os
 import dash
 import pandas as pd
 import plotly.express as px
+from plotly.subplots import make_subplots
 from dash import html, dcc, Input, Output, dash_table
 from datetime import datetime
 from zoneinfo import ZoneInfo  # This is for Python 3.9 and later
@@ -26,32 +27,51 @@ app = dash.Dash(__name__)
 # Dropdown to select the metric for plotting
 app.layout = html.Div([
     html.H1('Performance Metrics Over Time'),
+    html.Div(id='url-click-output'),  # To handle click outputs
     dcc.Dropdown(
         id='metric-select',
         options=[{'label': col, 'value': col} for col in df.columns if df[col].dtype in ['float64', 'int64']],
-        value='Average Latency'  # Default value
+        value=[col for col in df.columns if df[col].dtype in ['float64', 'int64']],  # Default to all numeric columns
+        multi=True  # Allow multiple selections
     ),
     dcc.Graph(id='time-series-chart'),
-    html.Div(id='url-click-output'),  # To handle click outputs
     html.Div(f"Last Updated: {readable_time}", style={'position': 'fixed', 'bottom': '10px', 'right': '10px'}),
 ])
 
-# Callback for updating the graph based on selected metric
+# Callback for updating the graph based on selected metrics
 @app.callback(
     Output('time-series-chart', 'figure'),
     Input('metric-select', 'value')
 )
-def update_graph(selected_metric):
-    fig = px.line(
-        df,
-        x='build_datetime',
-        y=selected_metric,
-        title=f'Trend of {selected_metric}',
-        text='commit_link'  # This is where the hover text comes from
-    )
+def update_graph(selected_metrics):
+    if not selected_metrics:
+        return {}
+    # Create a subplot figure with one row per selected metric
+    fig = make_subplots(rows=len(selected_metrics), cols=1, shared_xaxes=True, vertical_spacing=0.02)
+    
+    for i, metric in enumerate(selected_metrics):
+        trace = px.line(
+            df,
+            x='build_datetime',
+            y=metric,
+            title=f'Trend of {metric}',
+            text='commit_link'  # This is where the hover text comes from
+        ).data[0]
+        fig.add_trace(
+            trace,
+            row=i+1,
+            col=1
+        )
+    
     fig.update_traces(
         mode='markers+lines',
         hovertemplate='%{y}<extra></extra>'  # Customize hover text
+    )
+    
+    fig.update_layout(
+        height=300 * len(selected_metrics),  # Adjust height based on the number of metrics
+        title_text="Performance Metrics Over Time",
+        hovermode='closest'
     )
     return fig
 
