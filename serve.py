@@ -52,7 +52,7 @@ def create_metric_figure(metric):
 # Dropdown to select the metric for plotting
 app.layout = html.Div([
     html.H1('Performance Metrics Over Time'),
-    dcc.Markdown("", id='url-click-output'),  # Use dcc.Markdown to handle HTML
+    dcc.Markdown("Click on data point to show commit url.", id='url-click-output'),  # Use dcc.Markdown to handle HTML
     dcc.Dropdown(
         id='metric-select',
         options=[{'label': metric, 'value': metric} for metric in metrics],
